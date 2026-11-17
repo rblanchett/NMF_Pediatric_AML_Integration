@@ -15,3 +15,10 @@
 .group-results>summary{cursor:pointer;font-weight:650;color:#2b547e;font-size:.86rem;}
 .group-results .feature-list{margin-top:.65rem;}
 .group-results .feature-list li{line-height:1.4;padding-bottom:.5rem;}
+
+/* Original primary-group survival graph is a separate, undirected analysis. */
+.clinical-only[hidden],.survival-legend[hidden]{display:none!important}
+.survival-edge{cursor:pointer;fill:none;stroke-linecap:round;transition:opacity .12s;opacity:.82}
+.survival-edge .hit{fill:none;stroke:transparent;stroke-width:20;pointer-events:stroke}
+.survival-edge:hover,.survival-edge.is-selected{opacity:1;filter:drop-shadow(0 0 4px rgba(164,104,25,.42))}
+.key-line.survival{border-color:#b87923;border-bottom-style:dashed}
