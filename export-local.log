@@ -1,0 +1,17 @@
+[2026-11-17 11:36:46] Read Script 08 original assignments (only aggregate counts exported) 
+[2026-11-17 11:36:46] Read 13B directional sample counts 
+[2026-11-17 11:36:46] Public eligible directed-pair/population count rows: 292 
+[2026-11-17 11:36:47] Verified public risk feature: 1031 protocol (13B Feature=Protocol_Risk) 
+[2026-11-17 11:38:52] Read Script 08 original assignments (only aggregate counts exported) 
+[2026-11-17 11:38:52] Read 13B directional sample counts 
+[2026-11-17 11:38:52] Public eligible directed-pair/population count rows: 292 
+[2026-11-17 11:38:52] Verified public risk feature: 1031 protocol (13B Feature=Protocol_Risk) 
+[2026-11-17 11:38:52] Privacy-filtered 3416 clinical associations with small or unverified 2x2 cells 
+[2026-11-17 11:38:52] Public clinical association edges: 411 
+[2026-11-17 11:38:52] Loading precomputed 13C directional CpG counts 
+[2026-11-17 11:38:52] Public directional CpG summary pairs: 228 
+[2026-11-17 11:38:52] No verified original-group enrichment file supplied; node inspector will say so 
+[2026-11-17 11:38:53] SUCCESS — aggregate public JS data: C:/Users/reida/Documents/Aim_4/20260916_NMF/NMF_molecular_bridges/Pediatric_AML_Bridge_Explorer_GitHub_Ready/Pediatric_AML_Bridge_Explorer/data/network-data.js | 373,244 bytes 
+[2026-11-17 11:38:53] SUMMARY — nodes: 23; tested clinical associations: 411; eligible directed pair/population rows: 292; CpG-pair summaries: 228 
+[2026-11-17 11:38:53] PRIVACY — original patient IDs, direct CpG IDs, original beta matrix not exported 
+[2026-11-17 11:38:53] NEXT — review site and public summary, then publish; do NOT upload private 13B or 13C tables 
