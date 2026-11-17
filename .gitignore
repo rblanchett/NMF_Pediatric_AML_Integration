@@ -1,0 +1,14 @@
+# Never store private patient-level data or R analysis objects here.
+*.rds
+*.rda
+*.RData
+*PRIVATE*
+*_PRIVATE*
+*patient*.csv
+*Patient*.csv
+*USI*.csv
+*beta*.rds
+*.log
+.Rhistory
+.Rproj.user/
+.DS_Store
