@@ -4,14 +4,54 @@
 # =============================================================================
 # Converts existing private Script 08 / 13B / optional 13C + 11D results into
 # group-level summaries for an entirely static GitHub Pages website.
-# Does NOT export USIs, individual clinical records, beta values, or CpG IDs.
+# COMPLETE TESTED ANALYSIS EXPORT: NO EXTRA 2x2 SMALL-CELL CENSORSHIP.
+# Only associations actually tested by 13B with finite BH-adjusted P and
+# matched 13B bridge-arm counts are exported. This does NOT export USIs,
+# patient-level clinical records, beta values, or CpG IDs.
+# IMPORTANT: Rare-event subgroup counts/proportions are included; assess
+# reuse permissions for ALL linked clinical annotations before public release.
 # The site is its own repository; edit paths below before running locally.
 # =============================================================================
 
 # ----- 01. EDIT PATHS ON YOUR COMPUTER --------------------------------------
-PROJECT_DIR <- Sys.getenv("NMF_PROJECT_DIR", unset="C:/PATH/TO/NMF_Molecular_Bridges")
+PROJECT_DIR <- Sys.getenv("NMF_PROJECT_DIR", unset="C:/Users/reida/Documents/Aim_4/20260916_NMF/NMF_molecular_bridges/")
 # The EXTRACTED WEBSITE REPOSITORY folder, not the main NMF data project.
-PUBLIC_REPO_DIR <- Sys.getenv("NMF_BRIDGE_REPO_DIR", unset="C:/PATH/TO/Pediatric_AML_Bridge_Explorer")
+# AUTO-DETECT website root from scripts/export_public_data.R (RStudio Source or Rscript).
+# Set NMF_BRIDGE_REPO_DIR explicitly only if you launch this script from elsewhere.
+find_repo <- function() {
+  opts <- character()
+  args <- commandArgs(trailingOnly = FALSE)
+  script_args <- sub("^--file=", "", grep("^--file=", args, value = TRUE))
+  opts <- c(opts, script_args)
+  frames <- sys.frames()
+  for (frame in frames) {
+    if (exists("ofile", envir = frame, inherits = FALSE)) {
+      z <- get("ofile", envir = frame, inherits = FALSE)
+      if (is.character(z) && length(z) == 1L) opts <- c(opts,z)
+    }
+  }
+  if (length(opts)) for (q in rev(unique(opts))) {
+    if (nzchar(q) && file.exists(q) && basename(q) == "export_public_data.R") {
+      candidate <- normalizePath(file.path(dirname(q),".."),mustWork = FALSE)
+      if (file.exists(file.path(candidate,"index.html"))) return(candidate)
+    }
+  }
+  candidates <- unique(c(
+    getwd(), file.path(getwd(),"Pediatric_AML_Bridge_Explorer_COMPLETE"),
+    file.path(PROJECT_DIR,"Pediatric_AML_Bridge_Explorer_COMPLETE"),
+    file.path(PROJECT_DIR,"Pediatric_AML_Bridge_Explorer"),
+    file.path(PROJECT_DIR,"Pediatric_AML_Bridge_Explorer_GitHub_Ready","Pediatric_AML_Bridge_Explorer")
+  ))
+  found <- candidates[file.exists(file.path(candidates,"index.html"))]
+  if(length(found)) return(normalizePath(found[1L],mustWork=TRUE))
+  stop("Could not locate explorer website. Set NMF_BRIDGE_REPO_DIR to the folder containing index.html")
+}
+# If auto-detection fails, paste the path to your NEW extracted website here.
+# Example: "C:/Users/reida/Documents/Aim_4/20260916_NMF/NMF_molecular_bridges/Pediatric_AML_Bridge_Explorer_COMPLETE"
+PUBLIC_REPO_DIR_OVERRIDE <- ""
+PUBLIC_REPO_DIR <- Sys.getenv("NMF_BRIDGE_REPO_DIR", unset=PUBLIC_REPO_DIR_OVERRIDE)
+if (!nzchar(PUBLIC_REPO_DIR)) PUBLIC_REPO_DIR <- find_repo()
+cat("Website repository: ",PUBLIC_REPO_DIR,"\n",sep="")
 RESULTS <- file.path(PROJECT_DIR, "Results")
 FILE_08 <- file.path(RESULTS, "08_Comprehensive_All_CpG_Molecular_Patient_Map",
    "Objects", "08_Comprehensive_All_CpG_Molecular_Patient_Map_Objects.rds")
@@ -28,18 +68,15 @@ FILE_13C_REGIONS <- file.path(RESULTS, "13C_Clinical_CpG_Bridge_Integration", "T
 FILE_11D <- file.path(RESULTS, "11D_Pair_Specific_Molecular_Identity_Conservation",
    "Tables", "Table_11D_C_ALL_Selected_CpG_Direction_Associations.csv")
 
-# OPTIONAL: separately verified original-group one-vs-all significant
-# characteristics. Leave NA until mapped (do NOT reuse 13B incoming bridge
-# results as original-group enrichment!). Accept CSV or TSV after configuring
-# exact column names below. Records must indicate enriched vs depleted.
-GROUP_COVARIATES_FILE <- NA_character_
-GROUP_COL <- list(
-    Group = "Group", Feature = "Feature", Level = "Level",
-    Direction = "Direction", FDR = "FDR", Population = "Population")
+# Original primary-group clinical and pairwise-survival annotations are shipped
+# separately as data/original-group-annotations.js, precomputed from the two
+# uploaded source CSVs. This exporter NEVER overwrites that file.
 
 MIN_PUBLIC_BRIDGE <- 5L
 MIN_PUBLIC_NONBRIDGE <- 5L
-MIN_PUBLIC_CLINICAL_CELL <- 5L  # All four categorical 2x2 cells must have at least five patients
+# IMPORTANT: Previously an EXTRA publication suppression required all four
+# categorical 2x2 cells to contain >=5 patients. That was NOT part of Script 13B
+# and is deliberately REMOVED here; tested rare-event results are retained.
 GROUP_Q_CUTOFF <- 0.05
 SMALL_PRIMARY_COUNT_SUPPRESSION <- 5L  # no public exact values 1..4
 MAX_NEAREST_GENES <- 8L
@@ -131,9 +168,11 @@ need(clin,c("Pair_Key","Source","Target","Population","Feature","Level",
           "Pct_Bridge","Pct_NonBridge"),"13B clinical associations")
 if(any(as.character(clin$Feature) %in% c("Final.Risk.Group","Final_Risk_Group")))
   stop("Forbidden risk variable in 13B table: only 1031 protocol risk")
-if(any(clin$Feature=="Protocol_Risk",na.rm=TRUE))
+if (any(clin$Feature == "Protocol_Risk", na.rm = TRUE)) {
   logline("Verified public risk feature: 1031 protocol (13B Feature=Protocol_Risk)")
-else logline("No protocol 1031 risk clinical tests found (not silently substituted)")
+} else {
+  logline("No protocol 1031 risk clinical tests found (not silently substituted)")
+}
 clin <- clin[clin$Status=="tested" &
   clin$Source %in% identifiers & clin$Target %in% identifiers &
   clin$Population %in% c("All","Female","Male"),,drop=FALSE]
@@ -142,28 +181,19 @@ clin$Effect <- number(clin$Effect_Bridge_Minus_NonBridge)
 clin <- clin[is.finite(clin$Q)&clin$Q>=0&clin$Q<=1&is.finite(clin$Effect),,drop=FALSE]
 allowed_pairs <- paste(counts$Pair_Key,counts$Population,sep="||")
 clin <- clin[paste(clin$Pair_Key,clin$Population,sep="||") %in% allowed_pairs,,drop=FALSE]
-# Conservative public-release suppression: significant results derived from very
-# small categorical cells stay PRIVATE, even if source H arms contain >=5 people.
-# For binary/categorical covariate levels, all four cells of the incoming vs
-# non-incoming 2x2 comparison need at least MIN_PUBLIC_CLINICAL_CELL.
-# Age is continuous and already subject to the >=5-per-arm source rule.
-need(clin,c("N_Bridge_Observed","N_NonBridge_Observed",
-            "N_Bridge_Level","N_NonBridge_Level"),"13B public cell-suppression check")
-clin_before_privacy <- nrow(clin)
-is_continuous <- as.character(clin$Feature_Type)=="continuous"
-nb_obs <- number(clin$N_Bridge_Observed)
-nn_obs <- number(clin$N_NonBridge_Observed)
-nb_level <- number(clin$N_Bridge_Level)
-nn_level <- number(clin$N_NonBridge_Level)
-public_eligible <- is_continuous | (
-   is.finite(nb_obs)&is.finite(nn_obs)&is.finite(nb_level)&is.finite(nn_level) &
-   nb_level>=MIN_PUBLIC_CLINICAL_CELL &
-   nn_level>=MIN_PUBLIC_CLINICAL_CELL &
-   (nb_obs-nb_level)>=MIN_PUBLIC_CLINICAL_CELL &
-   (nn_obs-nn_level)>=MIN_PUBLIC_CLINICAL_CELL)
-clin <- clin[!is.na(public_eligible)&public_eligible,,drop=FALSE]
-logline("Privacy-filtered ",clin_before_privacy-nrow(clin),
-        " clinical associations with small or unverified 2x2 cells")
+# COMPLETE PUBLIC RESEARCH SUMMARY (no extra 2x2 cell censorship)
+# Script 13B already enforced MIN_BRIDGE_PATIENTS=5 and
+# MIN_NONBRIDGE_PATIENTS=5, and only "tested" results with finite BH FDR are
+# kept. We do not silently drop statistically tested clinical characteristics
+# merely because a mutation/fusion is rare in one subgroup.
+# This retains exact numeric group-level counts and fractions, including
+# potentially small cells. Public release requires checking source permissions.
+logline("Complete 13B tested clinical association rows retained (no extra 2x2 suppression): ",nrow(clin))
+logline("  With pooled BH q <= 0.05: ",sum(clin$Q[clin$Population=="All"]<=0.05,na.rm=TRUE))
+logline("  With female BH q <= 0.05: ",sum(clin$Q[clin$Population=="Female"]<=0.05,na.rm=TRUE))
+logline("  With male BH q <= 0.05: ",sum(clin$Q[clin$Population=="Male"]<=0.05,na.rm=TRUE))
+logline("  Distinct pooled source→target directions at q <= 0.05: ",
+  length(unique(clin$Pair_Key[clin$Population=="All" & clin$Q<=0.05])))
 if(nrow(clin) && any(make_pair(clin$Source,clin$Target)!=clin$Pair_Key))
   stop("13B clinical association Pair_Key mismatch")
 if(nrow(clin) && anyDuplicated(clin[,c("Pair_Key","Population","Feature","Level")]))
@@ -201,7 +231,7 @@ edges <- lapply(seq_len(nrow(clin)),function(i) {
        nonIncomingMedian=if(z$Feature_Type=="continuous")number(z$Pct_NonBridge) else NA_real_,
        primaryTest=z$Primary_Test,status=z$Status)
 })
-logline("Public clinical association edges: ",length(edges))
+logline("Full clinical association edges exported: ",length(edges))
 
 # ----- 06. OPTIONAL DIRECTED CpG SUMMARIES, NOT CLINICAL CpG TESTS ---------
 cpg <- list()
@@ -267,38 +297,45 @@ if(length(cpg)) {
 }
 logline("Public directional CpG summary pairs: ",length(cpg))
 
-# ----- 07. OPTIONAL ORIGINAL GROUP ONE-VS-ALL FEATURES ----------------------
-if(length(GROUP_COVARIATES_FILE)==1L && !is.na(GROUP_COVARIATES_FILE) &&
-   nzchar(GROUP_COVARIATES_FILE)) {
-  if(!file.exists(GROUP_COVARIATES_FILE))stop("Group enrichment file missing: ",GROUP_COVARIATES_FILE)
-  logline("Reading externally reviewed original-group one-vs-all feature table")
-  ext <- tolower(tools::file_ext(GROUP_COVARIATES_FILE))
-  z <- if(ext=="tsv")utils::read.delim(GROUP_COVARIATES_FILE,stringsAsFactors=FALSE,
-                                     check.names=FALSE) else rd(GROUP_COVARIATES_FILE)
-  essential <- c("Group","Feature","Level","Direction","FDR")
-  need(z,unlist(GROUP_COL[essential],use.names=FALSE),"Group one-vs-all enrichment")
-  popcol <- GROUP_COL$Population
-  make_val <- function(col)if(!is.null(col)&&length(col)==1L&&!is.na(col)&&col%in%names(z))z[[col]] else rep("All",nrow(z))
-  d <- data.frame(Group=as.character(make_val(GROUP_COL$Group)),
-     Feature=as.character(make_val(GROUP_COL$Feature)),
-     Level=as.character(make_val(GROUP_COL$Level)),
-     Direction=tolower(trimws(as.character(make_val(GROUP_COL$Direction)))),
-     FDR=number(make_val(GROUP_COL$FDR)),
-     Population=as.character(make_val(popcol)),stringsAsFactors=FALSE)
-  d$Direction[d$Direction %in% c("higher","overrepresented","over-represented","enrichment","enriched")] <- "enriched"
-  d$Direction[d$Direction %in% c("lower","underrepresented","under-represented","depletion","depleted")] <- "depleted"
-  if(any(!d$Direction %in% c("enriched","depleted")))
-    stop("Original-group enrichment has unrecognized directions. Supply explicit enriched/depleted labels")
-  d <- d[d$Group %in% identifiers & as.integer(groupcounts[match(d$Group,names(groupcounts))]) >= SMALL_PRIMARY_COUNT_SUPPRESSION & d$Population %in% c("All","Female","Male") &
-     is.finite(d$FDR)&d$FDR<=GROUP_Q_CUTOFF,,drop=FALSE]
-  for(i in seq_along(nodes)) {
-    q <- d[d$Group==nodes[[i]]$id,,drop=FALSE]
-    nodes[[i]]$groupStats <- lapply(seq_len(nrow(q)),function(j)
-       list(feature=q$Feature[j],level=q$Level[j],direction=q$Direction[j],
-            q=q$FDR[j],population=q$Population[j]))
-  }
-  logline("Imported reviewed original-group covariate rows: ",nrow(d))
-} else logline("No verified original-group enrichment file supplied; node inspector will say so")
+# ----- 07. ORIGINAL PRIMARY-GROUP ANNOTATIONS ----------------------------
+# These are precomputed separately. No directional 13B clinical test is reused
+# as an original NMF-group one-vs-all association.
+if (file.exists(file.path(PUBLIC_REPO_DIR,"data","original-group-annotations.js"))) {
+  logline("Preserving precomputed original one-vs-all + pairwise survival node annotations")
+} else {
+  logline("WARNING: original-group-annotations.js absent; nodes show no original annotations")
+}
+
+# ----- 07b. OPTIONAL ORIGINAL-ASSIGNMENT KM FIGURES --------------------------
+# Files are copied into the PUBLIC website only after explicit local selection.
+# No survival effect sizes are computed or attributed to 13B bridges.
+copy_km <- function(from,to_basename) {
+  if(!nzchar(from)) return(NA_character_)
+  if(!file.exists(from))stop("Selected KM plot does not exist: ",from)
+  ext <- tolower(tools::file_ext(from))
+  if(!ext %in% c("png","jpg","jpeg","svg","pdf"))
+    stop("KM plot must be png/jpg/jpeg/svg/pdf: ",from)
+  dest_dir <- file.path(PUBLIC_REPO_DIR,"assets","km")
+  dir.create(dest_dir,recursive=TRUE,showWarnings=FALSE)
+  dest <- file.path(dest_dir,paste0(to_basename,".",ext))
+  if(!file.copy(from,dest,overwrite=TRUE))stop("Cannot copy KM plot: ",from)
+  paste0("assets/km/",basename(dest))
+}
+km_overview <- if(nzchar(KM_OVERVIEW_FILE))copy_km(KM_OVERVIEW_FILE,"original_NMF_KM_overview") else NA_character_
+km_groups <- list()
+if(nzchar(KM_GROUP_PLOTS_DIR)) {
+ if(!dir.exists(KM_GROUP_PLOTS_DIR))stop("KM_GROUP_PLOTS_DIR not found: ",KM_GROUP_PLOTS_DIR)
+ for(g in identifiers){
+  options <- unlist(lapply(c("png","jpg","jpeg","svg","pdf"),function(ext)
+    file.path(KM_GROUP_PLOTS_DIR,paste0(g,".",ext))),use.names=FALSE)
+  hits <- options[file.exists(options)]
+  if(length(hits)>1L)stop("Multiple KM files for ",g,": choose one extension")
+  if(length(hits)==1L)km_groups[[g]] <- copy_km(hits[1L],paste0(g,"_original_KM"))
+ }
+}
+km <- list(overview=if(is.na(km_overview))NULL else km_overview,groups=km_groups)
+logline("Original-assignment KM figures copied: overview=",!is.na(km_overview),
+        "; individual groups=",length(km_groups))
 
 # ----- 08. PUBLIC EXPORT / SECURITY CHECK -----------------------------------
 out <- list(
@@ -307,8 +344,9 @@ out <- list(
     riskColumn="Risk.group.classification..by.protocol.1031",
     primaryGroupAssignmentsRefitted=FALSE,
     fdrFamily="13B FDR_Within_Population (BH within All/Female/Male)",
+    releasePolicy="complete Script 13B tested clinical associations; no additional 2x2 cell-size censoring",
     cpgNote="11D candidate CpGs are not individually tested against clinical covariates"),
-  nodes=nodes,edges=edges,cpg=cpg,counts=counts_pub)
+  nodes=nodes,edges=edges,cpg=cpg,counts=counts_pub,km=km)
 json <- jsonlite::toJSON(out,auto_unbox=TRUE,pretty=TRUE,na="null",null="null",digits=8)
 if(grepl('"USI"|"Patient_ID"|"Sample_ID"|"CpG_ID"',json,perl=TRUE))
   stop("SECURITY: unexpected patient/CpG identifier key in public JSON")
@@ -322,5 +360,5 @@ logline("SUCCESS — aggregate public JS data: ",outfile," | ",format(size,big.m
 logline("SUMMARY — nodes: ",length(nodes),"; tested clinical associations: ",
         length(edges),"; eligible directed pair/population rows: ",length(counts_pub),
         "; CpG-pair summaries: ",length(cpg))
-logline("PRIVACY — original patient IDs, direct CpG IDs, original beta matrix not exported")
-logline("NEXT — review site and public summary, then publish; do NOT upload private 13B or 13C tables")
+logline("RELEASE — no USI/CpG IDs or beta matrix exported; exact small aggregate clinical cells MAY be present")
+logline("NEXT — review permissions for linked clinical metadata; inspect site; publish only group-level JS")
