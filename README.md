@@ -4,7 +4,7 @@
 
 **23 NMF components · 854 pediatric AML diagnostic samples · Interactive, group-level network**
 
-[**Explore the interactive molecular bridge map**](https://rblanchett.github.io/Pediatric_AML_Bridge_Explorer/) · [Original pediatric AML NMF project](https://github.com/rblanchett/Pediatric_AML_NMF) · [How the website was built](docs/SITE_MAINTENANCE.md)
+[**Explore the interactive molecular bridge map**](https://rblanchett.github.io/NMF_Pediatric_AML_Integration/) · [Original pediatric AML NMF project](https://github.com/rblanchett/Pediatric_AML_NMF) · [How the website was built](docs/SITE_MAINTENANCE.md)
 
 > **About this resource:** This is an exploratory research visualization of group-level molecular relationships and clinical associations, **not** a clinical diagnostic or treatment tool. The network does not represent individual patients moving between disease states.
 
@@ -59,7 +59,7 @@ The risk variable is **`Risk.group.classification..by.protocol.1031` only**, not
 
 ## Explore the results
 
-**Start with a group.** Hover over or select an NMF node to inspect its original-group size, visible connections, and, when added, its separately tested **one-versus-all clinical enrichments**. Original-group enrichments are *not* inferred from the bridge statistics.
+**Start with a group.** Hover over or select an NMF node to inspect its original-group size, visible connections, its separately tested **one-versus-all clinical enrichments** and **original-group pairwise survival comparisons**. Original-group enrichments are *not* inferred from the bridge statistics.
 
 **Follow an arrow.** Hover or select a directional link to see the incoming and nonincoming patient counts, clinical comparison, effect direction, and **Benjamini–Hochberg false-discovery-rate (BH FDR)** result.
 
@@ -67,7 +67,7 @@ The risk variable is **`Risk.group.classification..by.protocol.1031` only**, not
 
 **Look at methylation signatures.** When available, the arrow details include directional CpG summaries, such as **primary-restricted** and **neighborhood-conserved** CpGs. These CpGs characterize the **molecular direction as a whole**; they are **not** necessarily CpGs statistically associated with the particular clinical feature shown on that arrow. Genomic locations and nearby genes are annotations, not demonstrated regulatory targets.
 
-**Connect to survival.** When original Kaplan–Meier (KM) figures are supplied, links appear in NMF node details. Those KM curves describe survival by **original primary NMF assignment**; they do **not** estimate survival for patients following any specific molecular bridge. The site does not generate new OS/EFS survival analyses.
+**Connect to survival.** Selecting an NMF node lists its original all-versus-all pairwise survival results against other primary groups: patient counts, events, chi-square statistic, original P value and supplied **BH-adjusted P value**. In the uploaded table, 171/253 comparisons were estimable and 36 had BH q < 0.05. These comparisons are from the **pooled original primary groups**, not individual H-bridge patients, and are not Cox hazard ratios. The table does **not** identify the survival endpoint, exact test procedure or which group has better survival; those details need confirmation against the original analysis script. Optional Kaplan–Meier (KM) figures can be linked separately.
 
 You can also **export the currently displayed network as SVG** for presentations or figures.
 
@@ -80,8 +80,8 @@ The viewer brings together several stages of the pediatric AML NMF analysis:
 | **Original NMF model / Script 08** | Fixed original NMF assignments and H-derived molecular neighborhoods |
 | **Script 13B** | Direction-specific clinical comparisons and incoming/nonincoming patient counts |
 | **Scripts 11D and 13C** | Directional CpG summaries and optional genomic context |
-| **Original one-versus-all clinical analysis** | Optional, separately imported enrichments/underrepresentations for individual NMF nodes |
-| **Original NMF survival analysis** | Optional links to reviewed original-group Kaplan–Meier plots |
+| **Original one-versus-all clinical analysis** | Imported variable-level BH-significant clinical characteristics for individual NMF nodes; category prevalences are descriptive |
+| **Original NMF pairwise survival analysis** | Pooled all-versus-all pairwise chi-square statistics and BH-adjusted P values; KM images remain optional |
 
 The exported website uses aggregate summaries and does not need patient-level methylation matrices or patient identifiers to render the network.
 
